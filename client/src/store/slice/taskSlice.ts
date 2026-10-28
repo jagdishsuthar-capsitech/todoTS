@@ -1,5 +1,5 @@
-import { createSlice, type PayloadAction, } from '@reduxjs/toolkit';
-import type { Task, TaskFormData, TaskState } from '../../types/task';
+import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
+import type { Task, TaskState } from '../../types/task';
 
 const initialState: TaskState = {
     tasks: [],
@@ -8,16 +8,7 @@ const initialState: TaskState = {
     sortOrder: 'newest',
     searchQuery: '',
     isSidebarOpen: false,
-    isModalOpen: false,
     toast: null,
-    editingId: null,
-    formData: {
-        title: '',
-        description: '',
-        priority: 'medium',
-        category: 'Work',
-        dueDate: ''
-    }
 };
 
 export const taskSlice = createSlice({
@@ -29,7 +20,7 @@ export const taskSlice = createSlice({
         },
         toggleTheme: (state) => {
             state.theme = state.theme === 'light' ? 'dark' : 'light';
-        },
+        },  
         setFilter: (state, action: PayloadAction<string>) => {
             state.filter = action.payload;
         },
@@ -42,70 +33,30 @@ export const taskSlice = createSlice({
         setIsSidebarOpen: (state, action: PayloadAction<boolean | undefined>) => {
             state.isSidebarOpen = action.payload !== undefined ? action.payload : !state.isSidebarOpen;
         },
-        setIsModalOpen: (state, action: PayloadAction<boolean>) => {
-            state.isModalOpen = action.payload;
-        },
         setToast: (state, action: PayloadAction<string | null>) => {
             state.toast = action.payload;
         },
         clearToast: (state) => {
             state.toast = null;
         },
-        setFormData: (state, action: PayloadAction<Partial<TaskFormData>>) => {
-            state.formData = { ...state.formData, ...action.payload };
-        },
-        openCreateModal: (state) => {
-            state.editingId = null;
-            state.formData = {
-                title: '',
-                description: '',
-                priority: 'medium',
-                category: 'Work',
-                dueDate: ''
-            };
-            state.isModalOpen = true;
-        },
-        handleEditClick: (state, action: PayloadAction<Task>) => {
-            const task = action.payload;
-            if (task.completed) return;
-            state.editingId = task.id;
-            state.formData = {
-                title: task.title || '',
-                description: task.description || '',
-                priority: task.priority || 'medium',
-                category: task.category || 'Work',
-                dueDate: task.dueDate || ''
-            };
-            state.isModalOpen = true;
-        },
-        handleSubmitTask: (state) => {
-            if (!state.formData.title.trim()) return;
-
+        addTask: (state, action: PayloadAction<Omit<Task, 'id' | 'createdAt' | 'updatedAt' | 'completed'>>) => {
             const now = Date.now();
-            if (state.editingId !== null) {
-                state.tasks = state.tasks.map(t => t.id === state.editingId ? {
-                    ...t,
-                    ...state.formData,
-                    title: state.formData.title.trim(),
-                    description: state.formData.description.trim(),
-                    updatedAt: now
-                } : t);
-                state.toast = 'Task updated successfully!';
-            } else {
-                const newTask: Task = {
-                    id: now.toString(),
-                    ...state.formData,
-                    title: state.formData.title.trim(),
-                    description: state.formData.description.trim(),
-                    completed: false,
-                    dueDate: state.formData.dueDate || new Date().toISOString().split('T')[0],
-                    createdAt: now,
-                    updatedAt: null
-                };
-                state.tasks = [newTask, ...state.tasks];
-                state.toast = 'Task created successfully!';
-            }
-            state.isModalOpen = false;
+            const newTask: Task = {
+                id: now.toString(),
+                ...action.payload,
+                completed: false,
+                dueDate: action.payload.dueDate || new Date().toISOString().split('T')[0],
+                createdAt: now,
+                updatedAt: null,
+            };
+            state.tasks = [newTask, ...state.tasks];
+            state.toast = 'Task created successfully!';
+        },
+        updateTask: (state, action: PayloadAction<{ id: string; updates: Partial<Task> }>) => {
+            const { id, updates } = action.payload;
+            const now = Date.now();
+            state.tasks = state.tasks.map(t => t.id === id ? { ...t, ...updates, updatedAt: now } : t);
+            state.toast = 'Task updated successfully!';
         },
         toggleComplete: (state, action: PayloadAction<string>) => {
             const id = action.payload;
@@ -125,8 +76,9 @@ export const taskSlice = createSlice({
 });
 
 export const {
-    setTheme, toggleTheme, setFilter, setSortOrder, setSearchQuery, setIsSidebarOpen, setIsModalOpen, setToast, clearToast, setFormData,
-    openCreateModal, handleEditClick, handleSubmitTask, toggleComplete, handleDelete, handleClearCompleted
+    setTheme, toggleTheme, setFilter, setSortOrder, setSearchQuery, 
+    setIsSidebarOpen, setToast, clearToast, addTask, updateTask, 
+    toggleComplete, handleDelete, handleClearCompleted
 } = taskSlice.actions;
 
 export const selectTheme = (state: { tasks: TaskState }) => state.tasks;

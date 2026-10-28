@@ -1,25 +1,58 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { CloseOutlined, CalendarOutlined, TagsOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
-import { useSelector, useDispatch } from 'react-redux';
-import { setIsModalOpen, setFormData, handleSubmitTask, selectTheme } from '../store/slice/taskSlice';
+import { useDispatch } from 'react-redux';
+import { addTask, updateTask } from '../store/slice/taskSlice';
+import type { Task, Priority, Category } from '../types/task';
 
-const TaskModal: React.FC = () => {
+interface TaskModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    taskToEdit?: Task | null;
+}
+
+const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, taskToEdit }) => {
     const dispatch = useDispatch();
-    const { isModalOpen, formData, editingId } = useSelector(selectTheme);
 
-    if (!isModalOpen) return null;
+    // Local state for instant typing without lagging Redux
+    const [formData, setFormData] = useState({
+        title: '',
+        description: '',
+        priority: 'medium' as Priority,
+        category: 'Work' as Category,
+        dueDate: ''
+    });
 
-    // Component-level modal & form submission functions
-    const handleCloseModal = () => dispatch(setIsModalOpen(false));
+    useEffect(() => {
+        if (taskToEdit) {
+            setFormData({
+                title: taskToEdit.title,
+                description: taskToEdit.description || '',
+                priority: taskToEdit.priority || 'medium',
+                category: taskToEdit.category || 'Work',
+                dueDate: taskToEdit.dueDate || ''
+            });
+        } else {
+            setFormData({ title: '', description: '', priority: 'medium', category: 'Work', dueDate: '' });
+        }
+    }, [taskToEdit, isOpen]);
+
+    if (!isOpen) return null;
 
     const handleFieldChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
-        dispatch(setFormData({ [name]: value }));
+        setFormData(prev => ({ ...prev, [name]: value }));
     };
 
     const handleFormSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        dispatch(handleSubmitTask());
+        if (!formData.title.trim()) return;
+
+        if (taskToEdit) {
+            dispatch(updateTask({ id: taskToEdit.id, updates: formData }));
+        } else {
+            dispatch(addTask(formData));
+        }
+        onClose();
     };
 
     return (
@@ -27,11 +60,11 @@ const TaskModal: React.FC = () => {
             <div className="w-full max-w-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
                 <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-800">
                     <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                        {editingId !== null ? 'Edit Task Details' : 'Create New Task'}
+                        {taskToEdit ? 'Edit Task Details' : 'Create New Task'}
                     </h3>
                     <button
                         type="button"
-                        onClick={handleCloseModal}
+                        onClick={onClose}
                         className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-xl cursor-pointer"
                     >
                         <CloseOutlined className="text-base" />
@@ -120,11 +153,11 @@ const TaskModal: React.FC = () => {
                     </div>
 
                     <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200 dark:border-slate-800">
-                        <button type="button" onClick={handleCloseModal} className="px-5 py-2.5 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl cursor-pointer">
+                        <button type="button" onClick={onClose} className="px-5 py-2.5 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl cursor-pointer">
                             Cancel
                         </button>
                         <button type="submit" className="px-6 py-2.5 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-md cursor-pointer">
-                            {editingId !== null ? 'Save Changes' : 'Create Task'}
+                            {taskToEdit ? 'Save Changes' : 'Create Task'}
                         </button>
                     </div>
                 </form>

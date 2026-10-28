@@ -1,7 +1,6 @@
 import { useEffect } from 'react';
 import TaskFilters from './TaskFilters';
 import TaskList from './TaskList';
-import TaskModal from './TaskModal';
 import { CheckCircleOutlined } from '@ant-design/icons';
 import { useDispatch, useSelector } from 'react-redux';
 import { clearToast, selectTheme } from '../store/slice/taskSlice';
@@ -49,7 +48,6 @@ const Hero = () => {
 
             <TaskFilters />
             <TaskList />
-            <TaskModal />
 
             {toast && (
                 <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 px-4 py-3 rounded shadow-xl text-xs font-semibold">

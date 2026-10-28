@@ -13,14 +13,6 @@ export interface Task {
     updatedAt: number | null;
 }
 
-export interface TaskFormData {
-    title: string;
-    description: string;
-    priority: Priority;
-    category: Category;
-    dueDate: string;
-}
-
 export interface TaskState {
     tasks: Task[];
     theme: 'light' | 'dark';
@@ -28,8 +20,5 @@ export interface TaskState {
     sortOrder: 'newest' | 'oldest' | 'asc' | 'desc';
     searchQuery: string;
     isSidebarOpen: boolean;
-    isModalOpen: boolean;
     toast: string | null;
-    editingId: string | null;
-    formData: TaskFormData;
 }
