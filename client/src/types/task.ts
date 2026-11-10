@@ -9,8 +9,8 @@ export interface Task {
     category: Category;
     dueDate: string;
     completed: boolean;
-    createdAt: number;
-    updatedAt: number | null;
+    createdAt: string;
+    updatedAt: string | null;
 }
 
 export interface TaskState {
@@ -21,4 +21,6 @@ export interface TaskState {
     searchQuery: string;
     isSidebarOpen: boolean;
     toast: string | null;
+    loading: boolean;
+    error: string | null;
 }

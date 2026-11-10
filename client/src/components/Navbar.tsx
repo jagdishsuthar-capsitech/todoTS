@@ -7,7 +7,7 @@ import TaskModal from './TaskModal';
 const Navbar: React.FC = () => {
     const dispatch = useDispatch();
     const { theme, searchQuery, tasks } = useSelector(selectTheme);
-    
+
     const searchInputRef = useRef<HTMLInputElement>(null);
     const notifRef = useRef<HTMLDivElement>(null);
 
@@ -50,8 +50,7 @@ const Navbar: React.FC = () => {
     }, [isNotifOpen]);
 
     const oneDayInMs = 24 * 60 * 60 * 1000;
-    const taskList = Array.isArray(tasks) ? tasks : [];
-    const pendingStaleTasks = taskList.filter(t => !t.completed && (Date.now() - t.createdAt) > oneDayInMs);
+    const taskList = Array.isArray(tasks) ? tasks : []; const pendingStaleTasks = taskList.filter(t => !t.completed && (Date.now() - new Date(t.createdAt).getTime()) > oneDayInMs);
     const unreadCount = pendingStaleTasks.length;
 
     return (
@@ -146,10 +145,10 @@ const Navbar: React.FC = () => {
                 </div>
             </header>
 
-            <TaskModal 
-                isOpen={isModalOpen} 
-                onClose={() => setIsModalOpen(false)} 
-                taskToEdit={taskToEdit} 
+            <TaskModal
+                isOpen={isModalOpen}
+                onClose={() => setIsModalOpen(false)}
+                taskToEdit={taskToEdit}
             />
         </>
     );

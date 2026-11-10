@@ -4,13 +4,15 @@ import { useDispatch } from 'react-redux';
 import { toggleComplete, handleDelete } from '../store/slice/taskSlice';
 import TaskModal from './TaskModal';
 import type { Task } from '../types/task';
+import type { AppDispatch } from '../store/store';
 
 interface TaskCardProps {
     task: Task;
 }
 
 const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
-    const dispatch = useDispatch();
+
+    const dispatch = useDispatch<AppDispatch>();
     const [isDeleting, setIsDeleting] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { CloseOutlined, CalendarOutlined, TagsOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
 import { useDispatch } from 'react-redux';
 import { addTask, updateTask } from '../store/slice/taskSlice';
+import type { AppDispatch } from '../store/store';
 import type { Task, Priority, Category } from '../types/task';
 
 interface TaskModalProps {
@@ -11,9 +12,11 @@ interface TaskModalProps {
 }
 
 const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, taskToEdit }) => {
-    const dispatch = useDispatch();
 
-    // Local state for instant typing without lagging Redux
+    const dispatch = useDispatch<AppDispatch>();
+
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState('');
     const [formData, setFormData] = useState({
         title: '',
         description: '',
@@ -32,48 +35,86 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, taskToEdit }) =>
                 dueDate: taskToEdit.dueDate || ''
             });
         } else {
-            setFormData({ title: '', description: '', priority: 'medium', category: 'Work', dueDate: '' });
+            setFormData({
+                title: '',
+                description: '',
+                priority: 'medium',
+                category: 'Work',
+                dueDate: ''
+            });
         }
+
+        setError('');
     }, [taskToEdit, isOpen]);
 
     if (!isOpen) return null;
 
     const handleFieldChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
-    const handleFormSubmit = (e: React.FormEvent) => {
+    const handleFormSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!formData.title.trim()) return;
 
-        if (taskToEdit) {
-            dispatch(updateTask({ id: taskToEdit.id, updates: formData }));
-        } else {
-            dispatch(addTask(formData));
+        if (!formData.title.trim()) {
+            setError('Task title is required.');
+            return;
         }
-        onClose();
+
+        setLoading(true);
+        setError('');
+
+        try {
+            if (taskToEdit) {
+                await dispatch(
+                    updateTask({
+                        id: taskToEdit.id,
+                        updates: formData
+                    })
+                ).unwrap();
+            } else {
+                await dispatch(addTask(formData)).unwrap();
+            }
+
+            onClose();
+        } catch (err) {
+            setError(
+                typeof err === 'string'
+                    ? err
+                    : 'Something went wrong. Please try again.'
+            );
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs">
-            <div className="w-full max-w-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
+            <div className="w-full max-w-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl overflow-hidden">
+
                 <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-800">
                     <h3 className="text-base font-bold text-slate-900 dark:text-white">
                         {taskToEdit ? 'Edit Task Details' : 'Create New Task'}
                     </h3>
+
                     <button
                         type="button"
                         onClick={onClose}
                         className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-xl cursor-pointer"
                     >
-                        <CloseOutlined className="text-base" />
+                        <CloseOutlined />
                     </button>
                 </div>
 
                 <form onSubmit={handleFormSubmit} className="p-6 space-y-4">
+
                     <div>
-                        <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">Task Title *</label>
+                        <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">
+                            Task Title *
+                        </label>
+
                         <input
                             type="text"
                             name="title"
@@ -82,82 +123,117 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, taskToEdit }) =>
                             value={formData.title}
                             onChange={handleFieldChange}
                             placeholder="e.g., Add Your Task..."
-                            className="w-full px-4 py-2.5 text-sm bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder-slate-400 rounded-xl border border-slate-200 dark:border-slate-700 focus:outline-none focus:border-indigo-500"
+                            className="w-full px-4 py-2.5 text-sm bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-xl border border-slate-200 dark:border-slate-700 focus:outline-none focus:border-indigo-500"
                         />
                     </div>
 
                     <div>
                         <div className="flex justify-between items-center mb-1.5">
-                            <label className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Task Description</label>
-                            <span className="text-[10px] text-slate-400">{formData.description.length}/150 chars</span>
+                            <label className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                                Task Description
+                            </label>
+
+                            <span className="text-[10px] text-slate-400">
+                                {formData.description.length}/150 chars
+                            </span>
                         </div>
+
                         <textarea
                             name="description"
                             rows={3}
                             maxLength={150}
                             value={formData.description}
                             onChange={handleFieldChange}
-                            placeholder="Add notes, context, or sub-steps (max 150 characters)..."
-                            className="w-full px-4 py-2.5 text-sm bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder-slate-400 rounded-xl border border-slate-200 dark:border-slate-700 focus:outline-none focus:border-indigo-500 resize-none"
+                            placeholder="Add notes or context..."
+                            className="w-full px-4 py-2.5 text-sm bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-xl border border-slate-200 dark:border-slate-700 focus:outline-none focus:border-indigo-500 resize-none"
                         />
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+
                         <div>
-                            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">Priority</label>
+                            <label className="block text-xs font-semibold text-slate-500 mb-1.5">
+                                Priority
+                            </label>
+
                             <div className="flex items-center gap-1.5 px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl">
                                 <ExclamationCircleOutlined className="text-slate-400" />
+
                                 <select
                                     name="priority"
                                     value={formData.priority}
                                     onChange={handleFieldChange}
-                                    className="w-full bg-transparent text-xs font-semibold text-slate-700 dark:text-slate-300 outline-none cursor-pointer uppercase"
+                                    className="w-full bg-transparent text-xs text-slate-700 dark:text-slate-300 outline-none"
                                 >
-                                    <option value="low" className="dark:bg-slate-800">Low</option>
-                                    <option value="medium" className="dark:bg-slate-800">Med</option>
-                                    <option value="high" className="dark:bg-slate-800">High</option>
+                                    <option value="low">Low</option>
+                                    <option value="medium">Medium</option>
+                                    <option value="high">High</option>
                                 </select>
                             </div>
                         </div>
 
                         <div>
-                            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">Category</label>
+                            <label className="block text-xs font-semibold text-slate-500 mb-1.5">
+                                Category
+                            </label>
+
                             <div className="flex items-center gap-1.5 px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl">
-                                <TagsOutlined className="text-slate-400" />
+                                <TagsOutlined />
+
                                 <select
                                     name="category"
                                     value={formData.category}
                                     onChange={handleFieldChange}
-                                    className="w-full bg-transparent text-xs font-semibold text-slate-700 dark:text-slate-300 outline-none cursor-pointer"
+                                    className="w-full bg-transparent text-xs text-slate-700 dark:text-slate-300 outline-none"
                                 >
-                                    <option value="Work" className="dark:bg-slate-800">Work</option>
-                                    <option value="Personal" className="dark:bg-slate-800">Personal</option>
-                                    <option value="Ideas" className="dark:bg-slate-800">Ideas</option>
+                                    <option value="Work">Work</option>
+                                    <option value="Personal">Personal</option>
+                                    <option value="Ideas">Ideas</option>
                                 </select>
                             </div>
                         </div>
 
                         <div>
-                            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">Due Date</label>
+                            <label className="block text-xs font-semibold text-slate-500 mb-1.5">
+                                Due Date
+                            </label>
+
                             <div className="flex items-center gap-1.5 px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl">
-                                <CalendarOutlined className="text-slate-400" />
+                                <CalendarOutlined />
+
                                 <input
                                     type="date"
                                     name="dueDate"
                                     value={formData.dueDate}
                                     onChange={handleFieldChange}
-                                    className="w-full bg-transparent text-xs font-semibold text-slate-700 dark:text-slate-300 outline-none cursor-pointer"
+                                    className="w-full bg-transparent text-xs text-slate-700 dark:text-slate-300 outline-none"
                                 />
                             </div>
                         </div>
                     </div>
 
+                    {error && (
+                        <p className="text-xs text-rose-600">
+                            {error}
+                        </p>
+                    )}
+
                     <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200 dark:border-slate-800">
-                        <button type="button" onClick={onClose} className="px-5 py-2.5 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl cursor-pointer">
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            disabled={loading}
+                            className="px-5 py-2.5 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl"
+                        >
                             Cancel
                         </button>
-                        <button type="submit" className="px-6 py-2.5 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-md cursor-pointer">
-                            {taskToEdit ? 'Save Changes' : 'Create Task'}
+
+                        <button
+                            type="submit"
+                            disabled={loading}
+                            className="px-6 py-2.5 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 rounded-xl"
+                        >
+                            {loading ? 'Saving...' : taskToEdit ? 'Save Changes' : 'Create Task'}
                         </button>
                     </div>
                 </form>
